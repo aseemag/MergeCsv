@@ -18,7 +18,7 @@ public class Csv
 		try
 		{
 			
-			FileInterface csv = FileMergeFactory.getFileInstance( "csv", "/home/aseema/work/", "/home/aseema/" );
+			FileInterface csv = FileMergeFactory.getFileInstance( "csv", "InputDir", "OutPutDir" );
 			logger.debug( "Csv.main()" + csv );
 			long startTime = System.currentTimeMillis();
 			csv.merge();
