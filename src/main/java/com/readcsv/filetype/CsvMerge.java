@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -22,136 +23,173 @@ import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 import com.readcsv.fileinterface.FileInterface;
 import com.readcsv.util.CommonUtil;
+import com.readcsv.util.FileComparator;
 import com.readcsv.util.GlobalConstants;
 
-public class CsvMerge implements FileInterface {
+public class CsvMerge implements FileInterface
+{
 	private char delimiter;
 	private String folderPath;
 	private String outputDirPath;
-	private Map<String, List<String>> output = new HashMap<String, List<String>>();
-	private List<String> columnNames = new ArrayList<String>();
-	private final static Logger logger=LoggerFactory.getLogger(CsvMerge.class);
+	private Map< String, List< String >> output = new HashMap< String, List< String >>();
+	private List< String > columnNames = new ArrayList< String >();
+	private final static Logger logger = LoggerFactory.getLogger( CsvMerge.class );
 
-	public CsvMerge(char delimiter, String folderPath, String outputDirPath) {
+	/**
+	 * @param delimiter
+	 * @param folderPath
+	 * @param outputDirPath
+	 */
+	public CsvMerge( char delimiter, String folderPath, String outputDirPath )
+	{
 		super();
 		this.delimiter = delimiter;
 		this.folderPath = folderPath;
 		this.outputDirPath = outputDirPath;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.readcsv.fileinterface.FileInterface#merge()
+	 */
 	@Override
-	public void merge() throws Exception {
-		File inputDir = new File(folderPath);
+	public void merge() throws Exception
+	{
+		File inputDir = new File( folderPath );
 
-		File[] listOfFiles = getListOfFiles(GlobalConstants.TYPE_CSV, inputDir);
+		List<File> listOfFiles = getListOfFiles( GlobalConstants.TYPE_CSV, inputDir );
 
-		logger.debug("CsvMerge.merge()--length of file"
-				+ listOfFiles.length);
+		logger.info( "No of Files" + listOfFiles.size()+" in inputDir "+folderPath);
 
-		if (CommonUtil.isNull(listOfFiles) || listOfFiles.length <= 1) {
-			throw new Exception("Atleast 2 Csv files needed for merge in dir");
+		if( CommonUtil.isNull( listOfFiles ) || listOfFiles.size() <= 1 )
+		{
+			throw new Exception( "Atleast 2 Csv files needed for merge in "+folderPath+" dir" );
 		}
-		Map<String, String> file1 = converFileToMap(listOfFiles[0]);
-		Map<String, String> file2 = converFileToMap(listOfFiles[1]);
-		output = file1.size() <= file2.size() ? getCommonEmails(file1, file2)
-				: getCommonEmails(file2, file1);
-		// logger.debug("CsvMerge.merge()"+file1);
-		logger.debug("CsvMerge.merge()--filePath"
-				+ listOfFiles[0].getPath() + "second path"
-				+ listOfFiles[1].getPath());
-		if (listOfFiles.length == 2) {
-			logger.debug("CsvMerge.merge() only 2 files so final output"
-					+ output);
-		} else {
-			Iterator<Entry<String, List<String>>> iter = output.entrySet()
-					.iterator();
-			while (iter.hasNext()) {
-				Entry<String, List<String>> common = iter.next();
-				collectCommonEmails(listOfFiles, common.getKey(), output, iter);
+		Map< String, String > file1 = converFileToMap( listOfFiles.get( 0 ) );
+		Map< String, String > file2 = converFileToMap( listOfFiles.get( 1 ));
+		output =  getCommonEmails( file1, file2 );
+		
+		logger.info( "CsvMerge.merge()--filePath" + listOfFiles.get( 0 ).getPath() + "second path" + listOfFiles.get( 1 ).getPath() );
+		if( listOfFiles.size() == 2 )
+		{
+			logger.info( "CsvMerge.merge() only 2 files so final output" + output );
+		}
+		else
+		{       
+			
+			Iterator< Entry< String, List< String >>> iter = output.entrySet().iterator();
+			while( iter.hasNext() )
+			{
+				Entry< String, List< String >> common = iter.next();
+				collectCommonEmails( listOfFiles, common.getKey(), output, iter );
 			}
 
-			logger.debug("CsvMerge.merge() MultipleFiles final output"
-					+ output);
-			logger.debug("CsvMerge.merge() MultipleFiles final Columns"
-					+ columnNames);
-			writeResultToCsv(output);
+			logger.info( "CsvMerge.merge() MultipleFiles final output" + output );
+			logger.info( "CsvMerge.merge() MultipleFiles final Columns" + columnNames );
+			writeResultToCsv( output );
 		}
 	}
 
-	private void writeResultToCsv(Map<String, List<String>> output) {
+	/**
+	 * @param output
+	 * Writes Output to a csv file
+	 */
+	private void writeResultToCsv( Map< String, List< String >> output )
+	{
 
-		try {
-			Files.deleteIfExists(Paths.get(outputDirPath
-					+ GlobalConstants.FILE_NAME));
-		} catch (IOException e1) {
+		try
+		{
+			Files.deleteIfExists( Paths.get( outputDirPath + GlobalConstants.FILE_NAME ) );
+		}
+		catch( IOException e1 )
+		{
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 
-		try {
-			// use FileWriter constructor that specifies open for appending
-			CsvWriter csvOutput = new CsvWriter(new FileWriter(outputDirPath
-					+ GlobalConstants.FILE_NAME, true), ',');
-			csvOutput.write("email");
-			for (String column : columnNames) {
-				csvOutput.write(column);
+		try
+		{
+			// use FileWriter constructor that specifies open for
+			// appending
+			CsvWriter csvOutput = new CsvWriter( new FileWriter( outputDirPath + GlobalConstants.FILE_NAME, true ), ',' );
+			csvOutput.write( "email" );
+			for( String column : columnNames )
+			{
+				csvOutput.write( column );
 			}
 			csvOutput.endRecord();
 
-			for (Entry<String, List<String>> finalResult : output.entrySet()) {
-				csvOutput.write(finalResult.getKey());
-				for (String value : finalResult.getValue()) {
-					csvOutput.write(value);
+			for( Entry< String, List< String >> finalResult : output.entrySet() )
+			{
+				csvOutput.write( finalResult.getKey() );
+				for( String value : finalResult.getValue() )
+				{
+					csvOutput.write( value );
 				}
 				csvOutput.endRecord();
 			}
-
+			logger.info( "Merged File result.csv created in " + outputDirPath );
 			csvOutput.close();
-		} catch (IOException e) {
+			
+		}
+		catch( IOException e )
+		{
 			e.printStackTrace();
 		}
 	}
 
-	private void collectCommonEmails(File[] listOfFiles, String key,
-			Map<String, List<String>> output,
-			Iterator<Entry<String, List<String>>> iter) {
-		for (int i = 2; i < listOfFiles.length; i++) {
+	/**
+	 * @param listOfFiles
+	 * @param key
+	 * @param output
+	 * @param iter
+	 * Finds if emails exists in remaining files
+	 */
+	private void collectCommonEmails( List<File> listOfFiles, String key, Map< String, List< String >> output, Iterator< Entry< String, List< String >>> iter )
+	{
+		for( int i = 2; i < listOfFiles.size(); i++ )
+		{
 			boolean isPresent = false;
-			try {
-				CsvReader read = new CsvReader(listOfFiles[i].getPath(),
-						delimiter);
+			try
+			{
+				CsvReader read = new CsvReader( listOfFiles.get( i ).getPath(), delimiter );
 
 				read.readHeaders();
 
-				String columnName = read.getHeader(1);
+				String columnName = read.getHeader( 1 );
 
-				while (read.readRecord()) {
+				while( read.readRecord() )
+				{
 
-					if (read.get("email").equals(key)) {
-						if (!columnNames.contains(columnName))
-							columnNames.add(columnName);
+					if( read.get( "email" ).equals( key ) )
+					{
+						if( !columnNames.contains( columnName ) )
+							columnNames.add( columnName );
 						isPresent = true;
-						List<String> listValues = output.get(key);
-						listValues.add(read.get(columnName));
-						output.put(key, listValues);
+						List< String > listValues = output.get( key );
+						listValues.add( read.get( columnName ) );
+						output.put( key, listValues );
+						break;
 					}
 
 				}
 				read.close();
-				if (!isPresent) {
-					System.out
-							.println("CsvMerge.collectCommonEmails()--no email"
-									+ key + " found in " + listOfFiles[i]);
+				if( !isPresent )
+				{
+					logger.info( "CsvMerge.collectCommonEmails()--no email" + key + " found in " + listOfFiles.get( i ) );
 					iter.remove();
 
 					break;
 
 				}
 
-			} catch (FileNotFoundException e) {
+			}
+			catch( FileNotFoundException e )
+			{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (IOException e) {
+			}
+			catch( IOException e )
+			{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -159,67 +197,96 @@ public class CsvMerge implements FileInterface {
 
 	}
 
-	private Map<String, List<String>> getCommonEmails(
-			Map<String, String> smallfile, Map<String, String> largeFile) {
+	/**
+	 * @param smallfile
+	 * @param largeFile
+	 * @return an intermediate output of common emails in first 2 files
+	 */
+	private Map< String, List< String >> getCommonEmails( Map< String, String > smallfile, Map< String, String > largeFile )
+	{
 
-		for (Map.Entry<String, String> entry : smallfile.entrySet()) {
-			if (largeFile.containsKey(entry.getKey())) {
-
-				List<String> values = new ArrayList<String>();
-				values.add(entry.getValue());
-				values.add(largeFile.get(entry.getKey()));
-				output.put(entry.getKey(), values);
+		for( Map.Entry< String, String > entry : smallfile.entrySet() )
+		{
+			if( largeFile.containsKey( entry.getKey() ) )
+			{
+                           
+				List< String > values = new ArrayList< String >();
+				values.add( entry.getValue() );
+				values.add( largeFile.get( entry.getKey() ) );
+				output.put( entry.getKey(), values );
 
 			}
 		}
 
-		logger.debug("CsvMerge.getCommonEmails()---" + output);
+		logger.info( "CsvMerge.getCommonEmails()---" + output );
 		return output;
 	}
 
-	private Map<String, String> converFileToMap(File file) {
-		Map<String, String> fileData = new HashMap<String, String>();
-		try {
-			CsvReader read = new CsvReader(file.getPath(), delimiter);
+	/**
+	 * @param file
+	 * @return Converts a given Csv file in hashmap
+	 */
+	private Map< String, String > converFileToMap( File file )
+	{
+		Map< String, String > fileData = new HashMap< String, String >();
+		try
+		{
+			CsvReader read = new CsvReader( file.getPath(), delimiter );
 
 			read.readHeaders();
 
-			String columnName = read.getHeader(1);
-			columnNames.add(columnName);
+			String columnName = read.getHeader( 1 );
+			columnNames.add( columnName );
 
-			while (read.readRecord()) {
-
-				fileData.put(read.get("email"), read.get(columnName));
+			while( read.readRecord() )
+			{
+                               if(!fileData.containsKey( read.get( "email" ) ))
+				fileData.put( read.get( "email" ), read.get( columnName ) );
 
 			}
 
 			read.close();
 
-		} catch (FileNotFoundException e) {
+		}
+		catch( FileNotFoundException e )
+		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (IOException e) {
+		}
+		catch( IOException e )
+		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return fileData;
 	}
 
-	private File[] getListOfFiles(final String type, File inputDir) {
-		File[] files=inputDir.listFiles(new FilenameFilter() {
-			
+	/**
+	 * @param type
+	 * @param inputDir
+	 * @return a list of files in directory sorted based on size
+	 */
+	private List< File > getListOfFiles( final String type, File inputDir )
+	{
+		File[] files = inputDir.listFiles( new FilenameFilter()
+		{
+
 			@Override
-			public boolean accept(File dir, String name) {
-				
-				if (name.toLowerCase().endsWith(type)) {
+			public boolean accept( File dir, String name )
+			{
+
+				if( name.toLowerCase().endsWith( type ) )
+				{
 					return true;
 				}
 				return false;
 			}
-		});
-       //  List<File> filesList=new ArrayList<File>(Arrays.asList(files));
-		return files;
-   
+		} );
+		List<File>listOfFiles=Arrays.asList(files );
+	        Collections.sort( listOfFiles, new FileComparator() );
+		logger.info( "Sorted List of Files" +listOfFiles);
+		return listOfFiles;
+
 	}
 
 }

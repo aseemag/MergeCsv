@@ -1,6 +1,7 @@
 package com.readcsv.util;
 
-public class GlobalConstants {
+public class GlobalConstants
+{
 
 	public static final String BLANK_STRING = "";
 	public static final String TYPE_CSV = ".csv";
